@@ -1,0 +1,55 @@
+version: "3.9"
+
+################################################################################
+# DEFAULT CONF https://stackoverflow.com/a/65522511
+
+x-healthcheck_conf: &healthcheck_conf
+      interval: 5s
+      retries: 30
+
+x-restart: &restart
+    restart: on-failure
+
+################################################################################
+
+services:
+  ##############################################################################
+  # MCServer
+  mc-server:
+    container_name: mc-server
+    build:
+      context: "./mc-server"
+      target: "packed"
+    environment:
+      - TERM=tmux-256color
+      - DEBUG_ENTRYPOINT=${DEBUG_ENTRYPOINT?}
+    networks:
+      minecraft:
+        ipv4_address: "13.37.2.2"
+    ports:
+      - 25666:25666
+    volumes:
+      - type: bind
+        source: /opt/docker/mc/${MINECRAFT_WORLD?}
+        target: /usr/local/mc/serv
+        bind:
+          create_host_path: true
+    << : *restart
+    healthcheck:
+      test: "nc -w 1 127.0.0.1 25666"
+      << : *healthcheck_conf
+  #
+  ##############################################################################
+
+networks:
+  minecraft:
+    name: minecraft
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: minecraft
+    ipam:
+      driver: default
+      config:
+        - subnet: 13.37.2.0/30
+          ip_range: 13.37.2.0/30
+          gateway: 13.37.2.1
